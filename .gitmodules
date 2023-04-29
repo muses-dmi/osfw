@@ -1,0 +1,3 @@
+[submodule "3rd_party/libremidi"]
+	path = 3rd_party/libremidi
+	url = https://github.com/jcelerier/libremidi
