@@ -42,7 +42,7 @@ rm -rf nanovg
 Now everything is ready, so:
 
 ```shell
-git clone 
+git clone https://github.com/bgaster/osfw
 cd osfw
 git submodule update --init --recursive
 make
@@ -53,3 +53,7 @@ Run the app with:
 ```shell
 ./osfw_app
 ```
+
+# Building with Xcode
+
+TODO
