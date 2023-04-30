@@ -9,6 +9,7 @@
 #include <iostream>
 #include <thread> 
 #include <atomic>
+#include <memory>
 
 #ifdef NANOVG_GLEW
 #	include <GL/glew.h>
@@ -27,18 +28,24 @@
 #include "osc.hpp"
 #include "fm.hpp"
 #include "slider.hpp"
+#include "scope.hpp"
 #include "util.hpp"
 #include "globals.hpp"
 #include "midi.hpp"
-
+#include "lfspsc_queue.hpp"
 
 const float sample_rate = 44100;
+const unsigned int num_frames = 256;
+const unsigned int num_input_channels = 0;
+const unsigned int num_output_channels = 1;
 
 const int width = 640;
 const int height = 480;
 
 VSlider gain_slider;
+Scope scope;
 float gain;
+std::shared_ptr<lfspsc_queue<float>> scope_queue;
 
 std::atomic_bool done{false};
 
@@ -50,6 +57,8 @@ struct Data {
     FM * fm_;
     Osc * lfo_;
     VSlider * gain_slider_;
+    Scope * scope_;
+    std::shared_ptr<lfspsc_queue<float>> scope_queue_;
     float * gain_;
 };
 
@@ -58,15 +67,19 @@ void audio_callback(const float* in, float* out, long frames, void* data){
     Data* d = static_cast<Data*>(data);
 
     // Generate frames (samples) for the audio buffer
-    for(int i = 0; i < frames; i++) {
+    for (int i = 0; i < frames; i++) {
         // first increment the LFO, so we can use it to modulate the FM osc
         d->lfo_->inc();
 
         // now step the FM osc 
         d->fm_->step((1. + d->lfo_->out()) * 1000.);
 
+        float v = d->fm_->out() * gain;
         // finally write the current fm_ sample value to the output channel
-        *out++ = d->fm_->out() * gain;
+        *out++ = v;
+
+        // copy amp to scope queue (it might be full...)
+        d->scope_queue_->push(v);
     }
 }
 
@@ -112,6 +125,7 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 
 void drawframe(GLFWwindow* window, NVGcontext* vg, Data& data) {
     data.gain_slider_->draw(vg);
+    data.scope_->draw(vg);
 }
 
 int main() {
@@ -159,7 +173,10 @@ int main() {
 
     // setup audio
     
-    gain_slider = VSlider{100, 100, 30, 120, 60};
+    gain_slider = VSlider{70, 320, 30, 120, 60};
+
+    scope_queue = std::shared_ptr<lfspsc_queue<float>>(new lfspsc_queue<float>{static_cast<size_t>(600)});
+    scope = Scope{20, 30, 600, 200, num_frames, scope_queue};
 
     Osc car{290.f, sample_rate, OSC_TYPE::SINE};
     Osc mod{400.f, sample_rate, OSC_TYPE::SINE};
@@ -169,11 +186,13 @@ int main() {
 
     gain = 0.5f;
 
-    Data data{&fm, &lfo, &gain_slider, &gain};
+    Data data{&fm, &lfo, &gain_slider, &scope, scope_queue, &gain};
 
+ 
     // start audio 
-    Pa a(audio_callback, &data);
+    Pa a(audio_callback, num_input_channels, num_output_channels, sample_rate, num_frames, &data);
     a.start(Pa::dontTerminate); // don't block...
+    std::cout << "frames: " << a.num_frames() << std::endl;
 
     // start midi
     std::thread thread_midi (handle_midi);
