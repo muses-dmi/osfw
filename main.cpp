@@ -31,7 +31,7 @@
 #include "globals.hpp"
 #include "midi.hpp"
 
-const float tau = 6.2831853;
+
 const float sample_rate = 44100;
 
 const int width = 640;
@@ -161,9 +161,9 @@ int main() {
     
     gain_slider = VSlider{100, 100, 30, 120, 60};
 
-    Osc car{290.f, tau, sample_rate};
-    Osc mod{400.f, tau, sample_rate};
-    Osc lfo{0.7f, tau, sample_rate};
+    Osc car{290.f, sample_rate, OSC_TYPE::SINE};
+    Osc mod{400.f, sample_rate, OSC_TYPE::SINE};
+    Osc lfo{0.7f, sample_rate, OSC_TYPE::TRIANGLE};
 
     FM fm{mod, car};
 
