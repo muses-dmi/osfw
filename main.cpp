@@ -33,6 +33,7 @@
 #include "globals.hpp"
 #include "midi.hpp"
 #include "lfspsc_queue.hpp"
+#include "button.hpp"
 
 const float sample_rate = 44100;
 const int framerate = 30;
@@ -44,6 +45,7 @@ const int width = 640;
 const int height = 480;
 
 VSlider gain_slider;
+Button frezze_button;
 Scope scope;
 float gain;
 std::shared_ptr<lfspsc_queue<float>> scope_queue;
@@ -58,6 +60,7 @@ struct Data {
     FM * fm_;
     Osc * lfo_;
     VSlider * gain_slider_;
+    Button * frezze_button_;
     Scope * scope_;
     std::shared_ptr<lfspsc_queue<float>> scope_queue_;
     float * gain_;
@@ -109,7 +112,11 @@ static void mouse_button_callback( GLFWwindow *window, int button, int action, i
     glfwGetCursorPos(window, &xpos, &ypos);
     
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        gain_slider.start_move(static_cast<int>(xpos), static_cast<int>(ypos));
+        if (!gain_slider.start_move(static_cast<int>(xpos), static_cast<int>(ypos))) {
+            if (frezze_button.hover(xpos, ypos)) {
+                scope.freeze();
+            }
+        }
     }
     
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
@@ -122,16 +129,15 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
         // calculate any change in gain
         gain = static_cast<double>(map(gain_slider.value(), 0, gain_slider.height(), 0, 1000)) / 1000.;
     }
+    else {
+        frezze_button.hover(xpos, ypos);
+    }
 }
 
 void drawframe(GLFWwindow* window, NVGcontext* vg, Data& data) {
     data.gain_slider_->draw(vg);
     data.scope_->draw(vg);
-}
-
-void renderfps(int framerate) 
-{ 
-
+    data.frezze_button_->draw(vg);
 }
 
 int main() {
@@ -180,6 +186,7 @@ int main() {
     // setup audio
     
     gain_slider = VSlider{70, 320, 30, 120, 60};
+    frezze_button = Button{200, 360, 30, 30};
 
     scope_queue = std::shared_ptr<lfspsc_queue<float>>(new lfspsc_queue<float>{static_cast<size_t>(6*600)});
     scope = Scope{20, 30, 600, 200, sample_rate, num_frames, scope_queue, framerate};
@@ -192,7 +199,7 @@ int main() {
 
     gain = 0.5f;
 
-    Data data{&fm, &lfo, &gain_slider, &scope, scope_queue, &gain};
+    Data data{&fm, &lfo, &gain_slider, &frezze_button, &scope, scope_queue, &gain};
 
  
     // start audio 

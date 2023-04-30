@@ -73,7 +73,7 @@ public:
         nvgRect(vg, x_, y_, width_, height_);
         nvgStrokeColor(vg, nvgRGBA(255,255,255,255));
 
-        if ( !freeze_) {
+        if (!freeze_) {
             for (int i = 0; i < width_ - buffer_size_; i++) {
                 // copy previous data to left by buffer size
                 data_[i] = data_[i+buffer_size_];
@@ -100,11 +100,6 @@ public:
             nvgMoveTo(vg, x_+ i, y_ + ht2_);
             nvgLineTo(vg, x_+ i, (y_ + ht2_) + data_[i] * -1);
         }
-
-    // sample_rate_ / buffer_size = 171.875
-
-    // (sample_rate / buffer_size) / framerate_ = 5.7
-
         
         nvgStroke(vg);
     }
