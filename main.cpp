@@ -35,6 +35,7 @@
 #include "lfspsc_queue.hpp"
 
 const float sample_rate = 44100;
+const int framerate = 30;
 const unsigned int num_frames = 256;
 const unsigned int num_input_channels = 0;
 const unsigned int num_output_channels = 1;
@@ -99,7 +100,7 @@ static void key(GLFWwindow* window, int key, int scancode, int action, int mods)
     }
 
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-    
+        scope.freeze();
     }
 }
 
@@ -126,6 +127,11 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 void drawframe(GLFWwindow* window, NVGcontext* vg, Data& data) {
     data.gain_slider_->draw(vg);
     data.scope_->draw(vg);
+}
+
+void renderfps(int framerate) 
+{ 
+
 }
 
 int main() {
@@ -175,8 +181,8 @@ int main() {
     
     gain_slider = VSlider{70, 320, 30, 120, 60};
 
-    scope_queue = std::shared_ptr<lfspsc_queue<float>>(new lfspsc_queue<float>{static_cast<size_t>(600)});
-    scope = Scope{20, 30, 600, 200, num_frames, scope_queue};
+    scope_queue = std::shared_ptr<lfspsc_queue<float>>(new lfspsc_queue<float>{static_cast<size_t>(6*600)});
+    scope = Scope{20, 30, 600, 200, sample_rate, num_frames, scope_queue, framerate};
 
     Osc car{290.f, sample_rate, OSC_TYPE::SINE};
     Osc mod{400.f, sample_rate, OSC_TYPE::SINE};
@@ -198,6 +204,8 @@ int main() {
     std::thread thread_midi (handle_midi);
 
     // GUI has to run on the main thread
+    double current_time = 0.;
+    double last_time    = 0.;
     while (!glfwWindowShouldClose(window)) {
         double mx, my, t, dt;
 		int winWidth, winHeight;
@@ -211,16 +219,24 @@ int main() {
 		pxRatio = (float)fbWidth / (float)winWidth;
 
         // Update and render
-		glViewport(0, 0, fbWidth, fbHeight);
-		glClearColor(0,0,0,0);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
+        current_time = glfwGetTime(); 
 
-        nvgBeginFrame(vg, winWidth, winHeight, pxRatio);
-            drawframe(window, vg, data);
-		nvgEndFrame(vg);
+        
 
-        glfwSwapBuffers(window);
-		glfwPollEvents();
+	    if(current_time - last_time >= 1.0 / framerate) {
+            //printf("%lf -- %lf\n", current_time - last_time, 1.0 / framerate);
+		    last_time = current_time;
+            glViewport(0, 0, fbWidth, fbHeight);
+            glClearColor(0,0,0,0);
+            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
+
+            nvgBeginFrame(vg, winWidth, winHeight, pxRatio);
+                drawframe(window, vg, data);
+            nvgEndFrame(vg);
+
+            glfwSwapBuffers(window);
+        }
+        glfwPollEvents();
 	}
 
     done = true;

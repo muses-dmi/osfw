@@ -95,6 +95,10 @@ void getDeviceInfo(unsigned int index);
 void setInputDevice(unsigned int index);
 void setOutputDevice(unsigned int index);
 
+unsigned int num_frames() const {
+    return framesperbuffer;
+}
+
 };
 
 
