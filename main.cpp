@@ -36,7 +36,7 @@
 #include "button.hpp"
 
 const float sample_rate = 44100;
-const int framerate = 30;
+const int framerate = 24;
 const unsigned int num_frames = 256;
 const unsigned int num_input_channels = 0;
 const unsigned int num_output_channels = 1;
@@ -189,7 +189,9 @@ int main() {
     frezze_button = Button{200, 360, 30, 30};
 
     scope_queue = std::shared_ptr<lfspsc_queue<float>>(new lfspsc_queue<float>{static_cast<size_t>(6*600)});
-    scope = Scope{20, 30, 600, 200, sample_rate, num_frames, scope_queue, framerate};
+    //scope = Scope{20, 30, 600, 200, sample_rate, num_frames, scope_queue, framerate};
+    scope = Scope{535, 1, 100, height-1, sample_rate, num_frames, scope_queue, framerate};
+
 
     Osc car{290.f, sample_rate, OSC_TYPE::SINE};
     Osc mod{400.f, sample_rate, OSC_TYPE::SINE};

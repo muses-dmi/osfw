@@ -21,10 +21,11 @@ private:
     int current_offset_;
     int *data_;
     int framerate_;
-    int ht2_;
+    int wt2_;
 
     int count_;
     bool freeze_;
+    bool border_;
 public:
     Scope() :
        x_{0}, y_{0}, 
@@ -33,9 +34,10 @@ public:
        buffer_size_{0}, buffer_{nullptr},
        current_offset_{0}, data_{nullptr},
        framerate_{0},
-       ht2_{0},
+       wt2_{0},
        count_{0},
-       freeze_{false} {
+       freeze_{false},
+       border_{false} {
     }
 
     Scope(
@@ -44,17 +46,19 @@ public:
         float sample_rate,
         unsigned int num_frames, 
         std::shared_ptr<lfspsc_queue<float>> buffer,
-        int framerate) :
+        int framerate,
+        bool border = false) :
         x_{x}, y_{y}, 
         width_{width}, height_{height}, 
         sample_rate_{sample_rate},
         buffer_size_{num_frames}, buffer_{buffer},
-        current_offset_{0}, data_{new int[width]},
+        current_offset_{0}, data_{new int[height]},
         framerate_{framerate},
-        ht2_{height_ / 2},
+        wt2_{width_ / 2},
         count_{0},
-        freeze_{false} {
-            for (int i = 0; i < width; i++) {
+        freeze_{false},
+        border_{border} {
+            for (int i = 0; i < height; i++) {
                 data_[i] = 0;
             }
     }
@@ -67,38 +71,39 @@ public:
     }
 
     void draw(NVGcontext* vg) {
-
-        // draw rectangle to give the scope shape        
         nvgBeginPath(vg);
-        nvgRect(vg, x_, y_, width_, height_);
+        
+        if (border_) {
+            // draw rectangle to give the scope shape 
+            nvgRect(vg, x_, y_, width_, height_);
+        }
+        
         nvgStrokeColor(vg, nvgRGBA(255,255,255,255));
 
         if (!freeze_) {
-            for (int i = 0; i < width_ - buffer_size_; i++) {
+            for (int i = 0; i < height_ - buffer_size_; i++) {
                 // copy previous data to left by buffer size
                 data_[i] = data_[i+buffer_size_];
             }
 
-            for (int i = width_ - buffer_size_; i < width_; i++) {
+            for (int i = height_ - buffer_size_; i < height_; i++) {
                 
                 float amp = 0.;
                 buffer_->pop(amp);
 
                 // first scale 
-                int h2 = height_ / 2;
-                amp = amp * h2;
+                amp = amp * wt2_;
                 data_[i] = amp;
             }
         }
-        count_++;
+        count_ = count_ + 1;
         if (count_ == 6) {
             count_ = 0;
         }
 
-
-        for (int i = 0; i < width_; i++) {
-            nvgMoveTo(vg, x_+ i, y_ + ht2_);
-            nvgLineTo(vg, x_+ i, (y_ + ht2_) + data_[i] * -1);
+        for (int i = 0; i < height_; i++) {
+            nvgMoveTo(vg, x_ + wt2_, y_+ i);
+            nvgLineTo(vg, (x_ + wt2_) + data_[i] * -1, y_+ i);
         }
         
         nvgStroke(vg);
